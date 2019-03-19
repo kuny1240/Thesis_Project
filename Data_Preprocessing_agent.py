@@ -37,11 +37,16 @@ sort_data['TIME'] = pd.to_datetime(sort_data['TIME'])
 
 sectors = sort_data['CELL_CELLNAME'].unique()#SECTOR_IDENTIFICATION
 
+i = 1
+
 for s in sectors:
+    i += 1
     df = sort_data.loc[sort_data['CELL_CELLNAME'] == s] #Temperary dataframe saving the sector
     df = df.resample('D',on = 'TIME').mean()
+    df['Episode'] = [i] * df.shape[0]
     df['CELL_CELLNAME'] = s
-    print(df.loc[:,['TIME','CELL_CELLNAME',label[0]]])
+    df.dropna(axis = 1)
+    print(df.loc[:,['Episode',label[0]]])
 
 
 
