@@ -37,7 +37,9 @@ raw_data = pd.concat(frames, sort=False)
 
 raw_data.fillna(raw_data.mean(),inplace = True)
 
-raw_data.fillna(0,inplace = True)
+raw_data.dropna(axis = 1,inplace = True)
+
+raw_data.drop(raw_data[raw_data.L_THRP_DL_BITRATE_LS5M_RATIO == 0].index,inplace = True)
 
 raw_data.to_csv('./Processed_Data/simulator_data.csv')
 
