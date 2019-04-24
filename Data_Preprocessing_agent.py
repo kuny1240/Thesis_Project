@@ -16,11 +16,14 @@ actions = ['CELLDLSCHALGO_RBPRIMCSSELECTRATIOTHD',
 
 states = pd.read_csv('./Configures/States_Names.csv').values
 
-states = list(np.reshape(states,(151,)))
+states = list(np.reshape(states
+                         ,(151,)))
 
 Identifies = ['CELL_CELLNAME','TIME']
 
-label = ['L_THRP_DL_BITRATE_LS5M_RATIO']
+#label = ['L_THRP_DL_BITRATE_LS5M_RATIO']
+
+label = ['L_USER_DL_THROUGPUT_FULLBUFF_MBPS']
 
 Useful_cols = Identifies + actions + states + label
 
@@ -37,7 +40,9 @@ sort_data['TIME'] = pd.to_datetime(sort_data['TIME'])
 
 sectors = sort_data['CELL_CELLNAME'].unique()#SECTOR_IDENTIFICATION
 
-i = 1
+i = 0
+
+frames = []
 
 for s in sectors:
     i += 1
@@ -46,7 +51,14 @@ for s in sectors:
     df['Episode'] = [i] * df.shape[0]
     df['CELL_CELLNAME'] = s
     df.dropna(axis = 1)
-    print(df.loc[:,['Episode',label[0]]])
+    df.reset_index()
+    print(df.loc[:,actions+label])
+    frames.append(df)
+
+result = pd.concat(frames)
+
+result.to_csv('./Processed_Data/Basic_agent_data.csv')
+
 
 
 

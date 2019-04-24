@@ -7,13 +7,13 @@ import numpy as np
 import os
 
 # set up for the columns
-path = '.\Raw_Data'
+path = '.\Test_Data'
 
 list_dir = os.listdir(path)
 
 frames = []
 
-actions = ['CELLDLSCHALGO_RBPRIMCSSELECTRATIOTHD',
+actions1 = ['CELLDLSCHALGO_RBPRIMCSSELECTRATIOTHD',
            'CELLCQIADJALGO_INITDELTACQI',
            'CELLCQIADJALGO_CQIADJSTEP',
            'CELLCQIADJALGO_INITDLIBLERTARGET',
@@ -21,16 +21,13 @@ actions = ['CELLDLSCHALGO_RBPRIMCSSELECTRATIOTHD',
 
 actions2 = ['CELLMLB_INTERFREQMLBUENUMTHD',
             'CELLMLB_UENUMDIFFTHD',
-            'CELLMLB_CELLCAPACITYSCALEFACTOR',
-            'INTERFREQHOGROUP_INTERFREQHOA4THDRSRP']
+            'CELLMLB_CELLCAPACITYSCALEFACTOR']
 
-states = pd.read_csv('./Configures/States_Names_1.csv')['Useful_Config'].values
+label1 = ['INTERFREQHOGROUP_INTERFREQLOADBASEDHOA4THDRSRP','INTERFREQHOGROUP_INTERFREQHOA4THDRSRP']
 
-states = list(np.reshape(states,(31,)))
+label2 = ['INTERFREQHOGROUP_INTERFREQHOA1THDRSRP','INTERFREQHOGROUP_INTERFREQHOA2THDRSRP']
 
-label = ['L_USER_DL_THROUGPUT_FULLBUFF_MBPS']
-
-Useful_cols = actions2 + states + label
+Useful_cols = actions1+actions2 + label1 + label2
 
 #Read the useful columns from rawdata
 for d in list_dir:
@@ -46,8 +43,8 @@ raw_data.fillna(raw_data.mean(),inplace = True)
 
 raw_data.dropna(axis = 1,inplace = True)
 
-raw_data.drop(raw_data[raw_data.L_USER_DL_THROUGPUT_FULLBUFF_MBPS == 0].index,inplace = True)
+# raw_data.drop(raw_data[raw_data.L_USER_DL_THROUGPUT_FULLBUFF_MBPS == 0].index,inplace = True)
 
-raw_data.to_csv('./Processed_Data/simulator_data_big1.csv')
+raw_data.to_csv('./Test_Data/test_data.csv')
 
 
