@@ -43,7 +43,7 @@ class Agent(object):
 
         for h_dim in hidden_dims:
             self.model.add(layers.Dense(h_dim, activation='relu'))
-            self.model.add(layers.Dropout(0.25))
+            # self.model.add(layers.Dropout(0.25))
 
         # I set output to be 5 at first,(+5,+1,0,-1,-5)
 
@@ -91,7 +91,6 @@ class Agent(object):
         Returns:
             action: an integer action value ranging from 0 to (n_actions - 1)
         """
-        shape = state.shape
         action_prob = np.squeeze(self.model.predict(state))
         return np.random.choice(np.arange(self.output_dim), p=action_prob)
 
@@ -106,9 +105,11 @@ class Agent(object):
         """
         action_onehot = np_utils.to_categorical(A, num_classes=self.output_dim)
         discount_reward = compute_discounted_R(R)
-        print(action_onehot.dtype, discount_reward.dtype)
+        S = S.reshape((-1, 35))
+        discount_reward = discount_reward.reshape((-1, 1))
+        action_onehot = action_onehot.reshape((-1,11))
 
-        self.train_fn([S, np.array(action_onehot), np.array(discount_reward)])
+        self.train_fn([S, action_onehot, discount_reward])
 
 
 def compute_discounted_R(R, discount_rate=.99):
@@ -119,10 +120,6 @@ def compute_discounted_R(R, discount_rate=.99):
     Returns:
         discounted_r (1-D array): same shape as input `R`
             but the values are discounted
-    Examples:
-        >>> R = [1, 1, 1]
-        >>> compute_discounted_R(R, .99) # before normalization
-        [1 + 0.99 + 0.99**2, 1 + 0.99, 1]
     """
     discounted_r = np.zeros_like(R, dtype=np.float32)
     running_add = 0
