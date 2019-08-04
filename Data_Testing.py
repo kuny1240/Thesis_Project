@@ -5,7 +5,9 @@ save them to as processed data, this part is simple.
 import pandas as pd
 import numpy as np
 import os
+from sklearn.svm import  LinearSVC
 
+LinearSVC.fit()
 # set up for the columns
 path = '.\Test_Data'
 

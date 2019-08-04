@@ -1,12 +1,10 @@
+import tensorflow as tf
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-
-
 
 class Simulator(object):
     def __init__(self):
-        self.model = tf.keras.models.load_model('./Processed_Data/kpi_model_v2.h5')
+        self.model = tf.keras.models.load_model('./Models/kpi_model_v2.h5')
         self.pos = 0
         self.state = np.array(35 * [0])
         self.act = 18  # this is the action column
@@ -20,8 +18,8 @@ class Simulator(object):
         self.cur_kpi = 0
 
     def reset(self):
-        self.pos = int(np.round(np.random.rand(1)[0] * 1883614))
-        self.state = pd.read_csv('./Processed_Data/simulator_data_big1.csv',
+        self.pos = int(np.round(np.random.rand(1)[0] * 31210))
+        self.state = pd.read_csv('./Processed_Data/Basic_agent_data_v1.csv',
                                  index_col=None)[self.pos:self.pos + 1].values
         # basic possible states from existing points
         self.noise_base = self.state[:, self.rand] * 0.05  # at most 5% change
@@ -34,7 +32,16 @@ class Simulator(object):
         k[k == 0] = -1
         self.state[:, self.rand] = self.noise_base * np.random.rand(len(self.rand)) * k + self.state[:, self.rand]
         pred_kpi = self.model.predict(self.state[:, list(range(1, 3)) + list(range(4, 37))])
-        r = pred_kpi - self.cur_kpi
+        if self.cur_kpi != 0:
+            r = (pred_kpi - self.cur_kpi) / self.cur_kpi
+        else:
+            r = 0.01
+        if r >= 0.05:
+            reward = 100
+        elif r < -0.05:
+            reward = -100
+        else:
+            reward = 1
         self.cur_kpi = pred_kpi
 
-        return self.state[:, list(range(1, 3)) + list(range(4, 37))], r
+        return self.state[:, list(range(1, 3)) + list(range(4, 37))], reward

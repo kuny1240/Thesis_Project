@@ -1,10 +1,16 @@
+"""
+Simple policy gradient in Keras
+"""
 import numpy as np
-from tensorflow.keras import layers
-from tensorflow.keras.models import Sequential
-from tensorflow.keras import backend as K
-from tensorflow.keras import utils as np_utils
-from tensorflow.keras import optimizers
-from Simulator import *
+import pandas as pd
+import tensorflow as tf
+
+from Simulator import Simulator
+from keras import layers
+from keras.models import Model
+from keras import backend as K
+from keras import utils as np_utils
+from keras import optimizers
 
 
 class Agent(object):
@@ -38,16 +44,20 @@ class Agent(object):
 
     def __build_network(self, input_dim, output_dim, hidden_dims=[32, 32]):
         """Create a base network"""
-        self.model = tf.keras.models.Sequential()
-        self.model.add(layers.BatchNormalization(input_shape=self.input_dim))
+        self.X = layers.Input(shape=(input_dim,))
+        net = self.X
 
         for h_dim in hidden_dims:
-            self.model.add(layers.Dense(h_dim, activation='relu'))
-            # self.model.add(layers.Dropout(0.25))
+            net = layers.BatchNormalization()(net)
+            net = layers.Dense(h_dim)(net)
+            net = layers.Activation("relu")(net)
+
+        net = layers.Dense(output_dim)(net)
+        net = layers.Activation("softmax")(net)
+
+        self.model = Model(inputs=self.X, outputs=net)
 
         # I set output to be 5 at first,(+5,+1,0,-1,-5)
-
-        self.model.add(layers.Dense(output_dim, activation='softmax'))
 
     def __build_train_fn(self):
         """Create a train function
@@ -70,7 +80,6 @@ class Agent(object):
 
         loss = - log_action_prob * discount_reward_placeholder
         loss = K.mean(loss)
-        print(loss)
 
         adam = optimizers.Adam()
 
@@ -83,6 +92,12 @@ class Agent(object):
                                    outputs=[],
                                    updates=updates)
 
+    def save(self, path):
+        self.model.save(path)
+
+    def read_model(self, path):
+        self.model = tf.keras.models.load_model(path)
+
     def get_action(self, state):
         """Returns an action at given `state`
         Args:
@@ -91,6 +106,7 @@ class Agent(object):
         Returns:
             action: an integer action value ranging from 0 to (n_actions - 1)
         """
+        shape = state.shape
         action_prob = np.squeeze(self.model.predict(state))
         return np.random.choice(np.arange(self.output_dim), p=action_prob)
 
@@ -106,8 +122,11 @@ class Agent(object):
         action_onehot = np_utils.to_categorical(A, num_classes=self.output_dim)
         discount_reward = compute_discounted_R(R)
         S = S.reshape((-1, 35))
-        discount_reward = discount_reward.reshape((-1, 1))
-        action_onehot = action_onehot.reshape((-1,11))
+        discount_reward = discount_reward.reshape(21)
+        assert S.shape[1] == self.input_dim, "{} != {}".format(S.shape[1], self.input_dim)
+        assert action_onehot.shape[0] == S.shape[0], "{} != {}".format(action_onehot.shape[0], S.shape[0])
+        assert action_onehot.shape[1] == self.output_dim, "{} != {}".format(action_onehot.shape[1], self.output_dim)
+        assert len(discount_reward.shape) == 1, "{} != 1".format(len(discount_reward.shape))
 
         self.train_fn([S, action_onehot, discount_reward])
 
@@ -120,6 +139,10 @@ def compute_discounted_R(R, discount_rate=.99):
     Returns:
         discounted_r (1-D array): same shape as input `R`
             but the values are discounted
+    Examples:
+        >>> R = [1, 1, 1]
+        >>> compute_discounted_R(R, .99) # before normalization
+        [1 + 0.99 + 0.99**2, 1 + 0.99, 1]
     """
     discounted_r = np.zeros_like(R, dtype=np.float32)
     running_add = 0
@@ -127,7 +150,7 @@ def compute_discounted_R(R, discount_rate=.99):
         running_add = running_add * discount_rate + R[t]
         discounted_r[t] = running_add
 
-    discounted_r -= discounted_r.mean() / discounted_r.std()
+    #     discounted_r -= discounted_r.mean() / discounted_r.std()
 
     return discounted_r
 
@@ -163,27 +186,32 @@ def run_episode(env, agent):
 
         s = s2
 
-    print(total_reward)
-    print(S)
-
     S = np.array(S)
     A = np.array(A)
-    R = np.array(R)
 
     agent.fit(S, A, R)
 
     return total_reward
 
 
-def main():
-    output_dim = 11
-    input_dim = [35]
-    agent = Agent(input_dim, output_dim, [16, 16])
-    env = Simulator()
-    for i in range(10):
+output_dim = 11
+input_dim = 35
+agent = Agent(input_dim, output_dim,hidden_dims=[128,64,32,32])
+# agent.read_model('./Models/agent_v3.h5')
+# m = pd.DataFrame(np.random.randn(1, 3),columns=['Mean','Max','Min'])
+env = Simulator()
+m = pd.read_csv('./Simulate_Result/epoch_reward.csv')
+for j in range(1000):
+    r = []
+    for i in range(32):
         reward = run_episode(env, agent)
-        print(reward)
+        r.append(reward)
+    tmp = pd.DataFrame([[sum(r)/len(r),max(r),min(r)]],columns=['Mean','Max','Min'])
+    m = m.append(tmp)
+    if (j+1) % 10 == 0:
+        agent.save('./Models/agent_v4.h5')
+        print('Epoch:' + str(j) + '*********' + 'Mean Reward:' + str(sum(r) / len(r)))
+        m.to_csv('./Simulate_Result/epoch_reward.csv',index=None)
 
 
-if __name__ == '__main__':
-    main()
+m.to_csv('./Simulate_Result/epoch_reward.csv',index=None)

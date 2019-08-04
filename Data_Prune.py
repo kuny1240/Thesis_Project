@@ -46,3 +46,5 @@ for d in list_dir:
     print("Drop vaccant column successful! Current data shape:",tmp_df.shape)
 
     tmp_df.to_csv(out_path+"-pruned-"+d)
+
+

@@ -19,18 +19,12 @@ actions = ['CELLDLSCHALGO_RBPRIMCSSELECTRATIOTHD',
            'CELLCQIADJALGO_INITDLIBLERTARGET',
            'CELLPCALGO_PUSCHRSRPHIGHTHD']
 
-actions2 = ['CELLMLB_INTERFREQMLBUENUMTHD',
-            'CELLMLB_UENUMDIFFTHD',
-            'CELLMLB_CELLCAPACITYSCALEFACTOR',
-            'INTERFREQHOGROUP_INTERFREQHOA4THDRSRP']
 
-states = pd.read_csv('./Configures/States_Names_1.csv')['Useful_Config'].values
-
-states = list(np.reshape(states,(31,)))
+states = pd.read_csv('./Configures/States_Names.csv').values
 
 label = ['L_USER_DL_THROUGPUT_FULLBUFF_MBPS']
 
-Useful_cols = actions2 + states + label
+Useful_cols = actions + states + label
 
 #Read the useful columns from rawdata
 for d in list_dir:
