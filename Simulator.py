@@ -1,47 +1,102 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import pickle
+import random
 
 class Simulator(object):
     def __init__(self):
-        self.model = tf.keras.models.load_model('./Models/kpi_model_v2.h5')
-        self.pos = 0
-        self.state = np.array(35 * [0])
-        self.act = 18  # this is the action column
-        self.kpi = 3
-        self.stationary = [17, 19, 20, 21, 22, 23, 24, 25, 26]  # these cols won't change during the procedure
-        self.rand = list(range(1, 16)) + list(
-            range(27, 37))  # these cols change a random gaussian noise with mean as the beginning status
-        self.rand.remove(3)
-        self.noise_base = np.array([0] * 24)
-        self.action_space = np.array([40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140])
+        # Model Load
+        self.kpi_model = tf.keras.models.load_model('./Models/KPI_model_best.h5')
+        self.state_scaler = pickle.load(open('./Models/state_scaler.pkl','rb'))
+        self.action_scaler = pickle.load(open('./Models/action_scaler.pkl', 'rb'))
+        #__________________________________________________________________________
+
+        # Initialize Positions
+        self.pos = -1 # Not initialized
+        self.state = np.zeros((131,))
+        self.action = np.zeros((4,))
+        self.random_cols = list(range(15,41)) + list(range(100, 131))  # these cols change a random gaussian noise with mean as the beginning status
+
+        # Initialize Bases
+        self.noise_base = np.zeros((len(self.random_cols),))
+        self.action_space = np.array([[-4,4],
+                                      [11,22],
+                                      [2,12],
+                                      [2,30]])
+
+        # Initialize factor
+        self.ini_kpi = 0
+        self.cur_step = 0
         self.cur_kpi = 0
+        self.done = 0
+        self.stuck_step = 0
+
+    def instant_reward(self,cur_kpi,pre_kpi):
+        if (cur_kpi - pre_kpi) / pre_kpi < - 0.05:
+            return 1
+        elif (cur_kpi - pre_kpi)/pre_kpi > 0.05:
+            return -1
+        elif cur_kpi < pre_kpi:
+            return -0.01
+        elif cur_kpi > pre_kpi:
+            return 0.01
+        else:
+            return  0
+
 
     def reset(self):
-        self.pos = int(np.round(np.random.rand(1)[0] * 31210))
-        self.state = pd.read_csv('./Processed_Data/Basic_agent_data_v1.csv',
+        ID = pd.read_csv('./Data_Bases/ID.csv')
+        self.pos =  random.choice(list(range(ID.shape[0])))
+        self.state = pd.read_csv('./Data_Bases/States_data.csv',
                                  index_col=None)[self.pos:self.pos + 1].values
+        self.ini_kpi = self.cur_kpi = pd.read_csv('./Data_Bases/KPI_data.csv',
+                                 index_col=None)[self.pos:self.pos + 1].values
+        if self.ini_kpi == 0 :
+            self.ini_kpi = self.cur_kpi = 0.1
+        self.action = pd.read_csv('./Data_Bases/Action_data.csv',
+                                 index_col=None)[self.pos:self.pos + 1].values
+        self.cur_step = 0
+        self.done = 0
+        self.stuck_step = 0
+        print("Now at cell:" + ID.iloc[self.pos,2])
+        print("Today is:" + ID.iloc[self.pos,0] +"Initial KPI is: {}".format(self.ini_kpi))
         # basic possible states from existing points
-        self.noise_base = self.state[:, self.rand] * 0.05  # at most 5% change
-        self.cur_kpi = self.state[:, self.kpi]
-        return self.state[:, list(range(1, 3)) + list(range(4, 37))]
+        self.noise_base = self.state[:, self.random_cols] * 0.0  # at most 5% change
+        return self.state
 
     def step(self, action):
-        self.state[:, self.act] = self.action_space[action]
-        k = np.random.binomial(1, .5, len(self.rand))
+        k = np.random.binomial(1, .5, len(self.random_cols))
         k[k == 0] = -1
-        self.state[:, self.rand] = self.noise_base * np.random.rand(len(self.rand)) * k + self.state[:, self.rand]
-        pred_kpi = self.model.predict(self.state[:, list(range(1, 3)) + list(range(4, 37))])
-        if self.cur_kpi != 0:
-            r = (pred_kpi - self.cur_kpi) / self.cur_kpi
-        else:
-            r = 0.01
-        if r >= 0.05:
-            reward = 100
-        elif r < -0.05:
-            reward = -100
-        else:
-            reward = 1
+        self.state[:, self.random_cols] = self.noise_base * np.random.rand(len(self.random_cols)) * k + self.state[:, self.random_cols]
+
+        pred_input = [self.state_scaler.transform(self.state),action]
+        pred_kpi = self.kpi_model.predict(pred_input)
+
+        reward = self.instant_reward(pred_kpi,self.cur_kpi)
+        if reward < 1:
+            self.stuck_step += 1
+        if reward == 1:
+            self.stuck_step == 0
+
+        self.cur_step += 1
+
+        if self.stuck_step >= 7 or self.cur_step == 21:
+            self.done = 1
+            reward += 10 * self.instant_reward(pred_kpi,self.ini_kpi)
+            print('Episode Ends, current kpi is {}'.format(pred_kpi))
+
         self.cur_kpi = pred_kpi
 
-        return self.state[:, list(range(1, 3)) + list(range(4, 37))], reward
+        return self.state, reward, self.done
+
+    def set_state(self,state):
+        self.state = state
+
+
+if __name__ == "__main__":
+    simulator = Simulator()
+    state = simulator.reset()
+    next_state,reward,done = simulator.step(np.array([[1,1,1,1]]))
+    next_state, reward, done = simulator.step(np.array([[0, 0, 0, 0]]))
+
