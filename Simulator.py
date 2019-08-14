@@ -33,17 +33,7 @@ class Simulator(object):
         self.stuck_step = 0
 
     def instant_reward(self,cur_kpi,pre_kpi):
-        if (cur_kpi - pre_kpi) / pre_kpi < - 0.05:
-            return 1
-        elif (cur_kpi - pre_kpi)/pre_kpi > 0.05:
-            return -1
-        elif cur_kpi < pre_kpi:
-            return -0.01
-        elif cur_kpi > pre_kpi:
-            return 0.01
-        else:
-            return  0
-
+        return 10 * (pre_kpi - cur_kpi) / pre_kpi
 
     def reset(self):
         ID = pd.read_csv('./Data_Bases/ID.csv')
@@ -74,9 +64,9 @@ class Simulator(object):
         pred_kpi = self.kpi_model.predict(pred_input)
 
         reward = self.instant_reward(pred_kpi,self.cur_kpi)
-        if reward < 1:
+        if reward < 0.5:
             self.stuck_step += 1
-        if reward == 1:
+        else:
             self.stuck_step == 0
 
         self.cur_step += 1

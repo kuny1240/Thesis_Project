@@ -18,8 +18,8 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
     BATCH_SIZE = 32
     GAMMA = 0.99
     TAU = 0.001  # Target Network HyperParameters
-    LRA = 1e-4  # Learning rate for Actor
-    LRC = 1e-3  # Lerning rate for Critic
+    LRA = 1e-6  # Learning rate for Actor
+    LRC = 1e-5  # Lerning rate for Critic
     action_dim = 4  # Steering/Acceleration/Brake
     state_dim = 131  # of sensors input
 
@@ -62,13 +62,16 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
     for i in range(episode_count):
 
         print("Episode : " + str(i) + " Replay Buffer " + str(buff.count()))
+        if i % 100 == 0:
+            losses = np.zeros((100,))
+            rewards = np.zeros((100,))
 
 
         s_t = env.reset()
 
-        total_reward = 0.
+        total_reward = 0
+        loss = 0
         for j in range(max_steps):
-            loss = 0
             epsilon -= 1.0 / EXPLORE
             a_t = np.zeros([1, action_dim])
             noise_t = np.zeros([1, action_dim])
@@ -97,7 +100,7 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
 
             s_t1 = env.state_scaler.transform(s_t1)
 
-            buff.add(s_t, a_t, np.array([[r_t]]), np.array([[done]]),s_t1)  # Add replay buffer
+            buff.add(s_t, a_t,r_t, np.array([[done]]),s_t1)  # Add replay buffer
 
             # Do the batch update
 
@@ -134,12 +137,18 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
             if done:
                 break
 
-        if np.mod(i, 20) == 0:
+        losses[i % 100] = loss
+        rewards[i % 100] = total_reward
+
+        if np.mod((i+1), 100) == 0:
             if (train_indicator):
                 print("Now we save model")
                 actor.model.save_weights("actormodel.h5", overwrite=True)
-
                 critic.model.save_weights("criticmodel.h5", overwrite=True)
+                losses_path = './Results/losses{}.txt'.format(i)
+                rewards_path = './Results/rewards{}.txt'.format(i)
+                np.savetxt(losses_path,losses)
+                np.savetxt(rewards_path,rewards)
 
         print("TOTAL REWARD @ " + str(i) + "-th Episode  : Reward " + str(total_reward))
         print("Total Step: " + str(step))
