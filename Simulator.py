@@ -16,7 +16,7 @@ class Simulator(object):
         self.pos = -1 # Not initialized
         self.state = np.zeros((131,))
         self.action = np.zeros((4,))
-        self.random_cols = list(range(15,41)) + list(range(100, 131))  # these cols change a random gaussian noise with mean as the beginning status
+        self.random_cols = list(range(15,41)) # these cols change a random gaussian noise with mean as the beginning status
 
         # Initialize Bases
         self.noise_base = np.zeros((len(self.random_cols),))
@@ -43,7 +43,7 @@ class Simulator(object):
         self.ini_kpi = self.cur_kpi = pd.read_csv('./Data_Bases/KPI_data.csv',
                                  index_col=None)[self.pos:self.pos + 1].values
         if self.ini_kpi == 0 :
-            self.ini_kpi = self.cur_kpi = 0.1
+            self.ini_kpi = self.cur_kpi = 1
         self.action = pd.read_csv('./Data_Bases/Action_data.csv',
                                  index_col=None)[self.pos:self.pos + 1].values
         self.cur_step = 0
@@ -53,7 +53,7 @@ class Simulator(object):
         print("Today is:" + ID.iloc[self.pos,0] +"Initial KPI is: {}".format(self.ini_kpi))
         # basic possible states from existing points
         self.noise_base = self.state[:, self.random_cols] * 0.0  # at most 5% change
-        return self.state
+        return self.state_scaler.transform(self.state)
 
     def step(self, action):
         k = np.random.binomial(1, .5, len(self.random_cols))
@@ -78,7 +78,7 @@ class Simulator(object):
 
         self.cur_kpi = pred_kpi
 
-        return self.state, reward, self.done
+        return self.state_scaler.transform(self.state), reward, self.done
 
     def set_state(self,state):
         self.state = state

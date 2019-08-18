@@ -18,16 +18,16 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
     BATCH_SIZE = 32
     GAMMA = 0.99
     TAU = 0.001  # Target Network HyperParameters
-    LRA = 1e-6  # Learning rate for Actor
-    LRC = 1e-5  # Lerning rate for Critic
+    LRA = 1e-4 # Learning rate for Actor
+    LRC = 1e-3  # Lerning rate for Critic
     action_dim = 4  # Steering/Acceleration/Brake
     state_dim = 131  # of sensors input
 
     np.random.seed(2333)
 
-    EXPLORE = 100000.
-    episode_count = 200000
-    max_steps = 10000000
+    EXPLORE = 100000
+    episode_count = 100000
+    max_steps = 1000000
     reward = 0
     done = 0
     step = 0
@@ -62,9 +62,9 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
     for i in range(episode_count):
 
         print("Episode : " + str(i) + " Replay Buffer " + str(buff.count()))
-        if i % 100 == 0:
-            losses = np.zeros((100,))
-            rewards = np.zeros((100,))
+        if i % 1000 == 0:
+            losses = np.zeros((1000,))
+            total_rewards = np.zeros((1000,))
 
 
         s_t = env.reset()
@@ -77,10 +77,10 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
             noise_t = np.zeros([1, action_dim])
 
             a_t_original = actor.model.predict(s_t)
-            noise_t[0][0] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][0],0.5, 1.00, 0.10)
-            noise_t[0][1] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][1], 0.5, 1.00, 0.10)
-            noise_t[0][2] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][2], 0.5, 1.00, 0.10)
-            noise_t[0][3] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][3], 0.5, 1.00, 0.10)
+            noise_t[0][0] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][0],0.5, 1.00, 0.15)
+            noise_t[0][1] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][1], 0.5, 1.00, 0.15)
+            noise_t[0][2] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][2], 0.5, 1.00, 0.15)
+            noise_t[0][3] = train_indicator * max(epsilon, 0) * OU.function(a_t_original[0][3], 0.5, 1.00, 0.15)
 
             # The following code do the stochastic brake
             # if random.random() <= 0.1:
@@ -96,9 +96,6 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
 
             s_t1, r_t, done= env.step(a_t)
 
-            s_t = env.state_scaler.transform(s_t)
-
-            s_t1 = env.state_scaler.transform(s_t1)
 
             buff.add(s_t, a_t,r_t, np.array([[done]]),s_t1)  # Add replay buffer
 
@@ -137,24 +134,26 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
             if done:
                 break
 
-        losses[i % 100] = loss
-        rewards[i % 100] = total_reward
+        losses[i % 1000] = loss
+        total_rewards[i % 1000] = total_reward
 
-        if np.mod((i+1), 100) == 0:
+        if np.mod((i+1),100) == 0:
             if (train_indicator):
                 print("Now we save model")
                 actor.model.save_weights("actormodel.h5", overwrite=True)
                 critic.model.save_weights("criticmodel.h5", overwrite=True)
+
+        if np.mod((i+1), 1000) == 0:
+            if (train_indicator):
                 losses_path = './Results/losses{}.txt'.format(i)
                 rewards_path = './Results/rewards{}.txt'.format(i)
                 np.savetxt(losses_path,losses)
-                np.savetxt(rewards_path,rewards)
+                np.savetxt(rewards_path,total_rewards)
 
         print("TOTAL REWARD @ " + str(i) + "-th Episode  : Reward " + str(total_reward))
         print("Total Step: " + str(step))
         print("")
-
-    env.end()  # This is for shutting down TORCS
+  # This is for shutting down TORCS
     print("Finish.")
 
 
