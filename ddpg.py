@@ -9,11 +9,20 @@ from Buffer import Buffer
 from Actor_Network import ActorNetwork
 from Critic_Network import CriticNetwork
 from OU import OU
-import timeit
+import time
+import os
 OU = OU()  # Ornstein-Uhlenbeck Process
 
 
-def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
+def playGame(train_indicator=1): # 1 means Train, 0 means simply Run
+
+    cur_path = os.path.abspath(os.path.curdir)
+    model_path = "/Models/"
+    result_path = "/Results/"
+    curr_test = "Large_Noise_Result/"
+    actor_name = "actormodel{}.h5"
+    critic_name = "criticmodel{}.h5"
+
     BUFFER_SIZE = 100000
     BATCH_SIZE = 32
     GAMMA = 0.99
@@ -25,9 +34,9 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
 
     np.random.seed(2333)
 
-    EXPLORE = 100000
-    episode_count = 100000
-    max_steps = 1000000
+    EXPLORE = 10000
+    episode_count = 10000
+    max_steps = 100000
     reward = 0
     done = 0
     step = 0
@@ -51,15 +60,16 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
     # Now load the weight
     print("Now we load the weight")
     try:
-        actor.model.load_weights("actormodel.h5")
-        critic.model.load_weights("criticmodel.h5")
-        actor.target_model.load_weights("actormodel.h5")
-        critic.target_model.load_weights("criticmodel.h5")
+        actor.model.load_weights(cur_path + "/Models/actormodel.h5")
+        critic.model.load_weights(cur_path +"/Models/criticmodel.h5")
+        actor.target_model.load_weights(cur_path + "/Models/actormodel.h5")
+        critic.target_model.load_weights(cur_path + "/Models/criticmodel.h5")
         print("Weight load successfully")
     except:
         print("Cannot find the weight")
 
     for i in range(episode_count):
+        start_time = time.time()
 
         print("Episode : " + str(i) + " Replay Buffer " + str(buff.count()))
         if i % 1000 == 0:
@@ -125,6 +135,7 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
                 actor.target_train()
                 critic.target_train()
 
+
             total_reward += r_t
             s_t = s_t1
 
@@ -140,20 +151,26 @@ def playGame(train_indicator=1):  # 1 means Train, 0 means simply Run
         if np.mod((i+1),100) == 0:
             if (train_indicator):
                 print("Now we save model")
-                actor.model.save_weights("actormodel.h5", overwrite=True)
-                critic.model.save_weights("criticmodel.h5", overwrite=True)
+                actor.model.save_weights(cur_path + "/Models/actormodel.h5", overwrite=True)
+                critic.model.save_weights(cur_path + "/Models/criticmodel.h5", overwrite=True)
 
         if np.mod((i+1), 1000) == 0:
             if (train_indicator):
-                losses_path = './Results/losses{}.txt'.format(i)
-                rewards_path = './Results/rewards{}.txt'.format(i)
+                losses_path = (cur_path + result_path + curr_test + 'losses{}.txt').format(i)
+                rewards_path = (cur_path + result_path + curr_test + 'rewards{}.txt').format(i)
                 np.savetxt(losses_path,losses)
                 np.savetxt(rewards_path,total_rewards)
+                print("Now we save model")
+                actor.model.save_weights((cur_path + model_path+curr_test+"actormodel{}.h5").format(i), overwrite=True)
+                critic.model.save_weights((cur_path + model_path+curr_test+"criticmodel{}.h5").format(i), overwrite=True)
+                actor.target_model.save_weights((cur_path + model_path + curr_test + "actortarmodel{}.h5").format(i), overwrite=True)
+                critic.target_model.save_weights((cur_path + model_path + curr_test + "crititarcmodel{}.h5").format(i), overwrite=True)
 
         print("TOTAL REWARD @ " + str(i) + "-th Episode  : Reward " + str(total_reward))
         print("Total Step: " + str(step))
-        print("")
-  # This is for shutting down TORCS
+        print("Took {} S".format(time.time() - start_time))
+
+    # This is for shutting down TORCS
     print("Finish.")
 
 
