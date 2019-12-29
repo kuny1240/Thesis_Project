@@ -2,9 +2,6 @@
 
 
 ## Todo List
-- [ ] Add feature: Sector Training
-- [ ] Add feature: Communication
-- [ ] Add feature: Variance Setting
-- [ ] Intergrate with VBC
-   -  [ ] Insert simulator into the training process
-   -  [ ] Come up with new reward function
+-[ ] Set up basic Modules
+   -[ ] Set up q-learning actor-critic model (3 potential choices for each action)
+   -[ ] Set up 
